@@ -21,8 +21,6 @@ from pyquil.api import get_devices as Rget_devices, CompilerConnection
 from scipy.optimize import differential_evolution
 
 import matplotlib.pyplot as plt
-import pyemd
-
 import itertools
 
 
@@ -224,6 +222,8 @@ def cnll(p, q, eps=1e-8):
 
 
 def emd(p, q):
+    import pyemd
+    
     x = np.arange(len(p))
     dst = np.square(np.abs(np.array(x[:, np.newaxis]) - np.array(x[np.newaxis, :])).astype(float))
     return pyemd.emd(p, q, dst)
