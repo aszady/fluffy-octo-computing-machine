@@ -280,4 +280,39 @@ def topology(N, name='all'):
         return [(i, j) for i in range(N) for j in range(N) if i != j]
     if name == 'ring':
         return [(i, (i+1)%N) for i in range(N)] + [(i, (i-1)%N) for i in range(N)]
+    if name == 'line':
+        return [(i, i+1) for i in range(N-1)] + [(i, (i-1)) for i in range(1, N)]
     raise NotImplementedError('NIE')
+
+def postoptimize(prog):
+    dev = Rget_devices(as_dict=True)['8Q-Agave']
+    comp = CompilerConnection(device=dev)
+    pp1 = comp.compile(prog)
+
+    for i in range(10):
+
+        change = False
+
+        ne_inst = []
+        for inst in pp1.instructions:
+            if type(inst) is Gate:
+                if inst.name == 'RZ':
+                    angle = inst.params[0] % pi
+                    #print('RZ angle: ', angle, angle % pi)
+                    if min(angle, pi-angle) < 1e-3:
+                        change = True
+                        #print('Removing.')
+                        continue
+
+
+                ne_inst.append(inst)
+
+        if not change:
+            break
+
+        #print('Recompiling...')
+
+        pp1 = comp.compile(pq.Program(ne_inst))
+
+    return pp1
+#

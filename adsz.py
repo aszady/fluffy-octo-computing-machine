@@ -156,6 +156,10 @@ LOG('EMD', emd(di, REF_DISTRIBUTION))
 
 LOG(p_best)
 
+LOG('\n')
+LOG('Compiled:')
+LOG(postoptimize(p_best))
+
 qvm = QVMConnection()
 wf = qvm.wavefunction(p_best)[0]
 #wf.plot()
