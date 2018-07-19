@@ -31,6 +31,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('rows', type=int, default=2)
 parser.add_argument('cols', type=int, default=2)
 parser.add_argument('-k', type=int, default=3)
+parser.add_argument('-seq', type=str)
 args = parser.parse_args()
 
 ROWS, COLS = args.rows, args.cols
@@ -56,12 +57,13 @@ INIT_ARR[0] = 1.
 BUILDING_BLOCKS = {
     #'I': lambda N, A: [I(i) for i in range(N)],
     'RX1': lambda N, A: [RX1(i) for i in range(N)],
-    'RXX': lambda N, A: [RXX(next(A), i) for i in range(N)],
+    #'RXX': lambda N, A: [RXX(next(A), i) for i in range(N)],
     'RZZ': lambda N, A: [RZZ(next(A), i) for i in range(N)],
     #'A1': lambda N, A: [[RX1(i), RZZ(next(A), i), CZ(i, j), RX3(j)] for i in range(N) for j in range(N) if i<j],
     #'A2': lambda N, A: [[RX1(i), RZZ(next(A), i), CZ(i, j), RX3(j)] for i in range(N) for j in range(N) if i!=j],
     'A3': lambda N, A: [[RX1(i), RZZ(next(A), j), CZ(i, j), RX3(j)] for i in range(N) for j in range(N) if i!=j],
-    'A4': lambda N, A: [[RZZ(next(A), i), RZZ(next(A), j), RX1(i), CZ(i, j)] for i in range(N) for j in range(N) if i!=j]
+    'A4': lambda N, A: [[RZZ(next(A), i), RZZ(next(A), j), RX1(i), CZ(i, j)] for i in range(N) for j in range(N) if i!=j],
+    'A4S': lambda N, A: [[RZZ(next(A), i), RZZ(next(A), (i+1)%N), RX1(i), CZ(i, (i+1)%N)] for i in range(N)]
 }
 
 def build_bb(*bb_seq):
@@ -87,13 +89,16 @@ def count_vars_bb(*bb_seq):
 
 begin_with_rx1 = random.choice([False, True])
 
-SEQ = []
-if begin_with_rx1:
-    SEQ.append('RX1')
+if args.seq:
+    SEQ = args.seq.split('-')
+else:
+    SEQ = []
+    if begin_with_rx1:
+        SEQ.append('RX1')
 
-RSEQ = random.choices(population=list(BUILDING_BLOCKS.keys()), k=args.k - len(SEQ))
+    RSEQ = random.choices(population=list(BUILDING_BLOCKS.keys()), k=args.k - len(SEQ))
 
-SEQ.extend(RSEQ)
+    SEQ.extend(RSEQ)
 
 
 PROJECT_NAME = str(ROWS) + '-' + str(COLS) + '/' + '-'.join(SEQ) + '/' + str(int(time.time()))
@@ -109,9 +114,10 @@ def LOG(*args):
 
 test1 = build_bb(*SEQ)
 num_vars = count_vars_bb(*SEQ)
+num_gates = len(test1(*[0.12]*num_vars).instructions)
 
 LOG(PROJECT_NAME)
-LOG('SEQ:', '-'.join(SEQ), ', vars = ', num_vars)
+LOG('SEQ:', '-'.join(SEQ), ', vars = ', num_vars, ', num_gates = ', num_gates)
 
 
 task = OptTask(test1, REF_DISTRIBUTION)
