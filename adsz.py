@@ -136,7 +136,9 @@ LOG('SEQ:', '-'.join(SEQ), ', vars = ', num_vars, ', num_gates = ', num_gates)
 
 
 task = OptTask(test1, REF_DISTRIBUTION)
-result = differential_evolution(task, [(-1.3, +1.3)]*num_vars, disp=True, maxiter=2, popsize=10, recombination=0.7, strategy='best1bin', polish=USE_WAVEFUNCTION)
+result = differential_evolution(task, [(-1.3, +1.3)]*num_vars, init='random',
+    disp=True, maxiter=2, popsize=10, recombination=0.7,
+    strategy='best1bin', polish=USE_WAVEFUNCTION)
 
 LOG(result)
 
