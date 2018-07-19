@@ -181,11 +181,11 @@ def bs_dist(rows, cols):
 
     n_points, n_qubits = bas.shape
 
-    fig, ax = plt.subplots(1, bas.shape[0], figsize=(9, 1))
-    for i in range(bas.shape[0]):
-        ax[i].matshow(bas[i].reshape(rows, cols), vmin=-1, vmax=1)
-        ax[i].set_xticks([])
-        ax[i].set_yticks([])
+    #fig, ax = plt.subplots(1, bas.shape[0], figsize=(9, 1))
+    #for i in range(bas.shape[0]):
+    #    ax[i].matshow(bas[i].reshape(rows, cols), vmin=-1, vmax=1)
+    #    ax[i].set_xticks([])
+    #    ax[i].set_yticks([])
 
     '''sample distribution'''
     hist_sample = [0 for _ in range(2 ** n_qubits)]
@@ -194,7 +194,7 @@ def bs_dist(rows, cols):
         idx = int(b, 2)
         hist_sample[idx] += 1. / float(n_points)
 
-    plt.show()
+    #plt.show()
 
     return np.array(hist_sample)
 
