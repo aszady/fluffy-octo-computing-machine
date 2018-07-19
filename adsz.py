@@ -26,37 +26,62 @@ import pyemd
 import itertools
 from utils import *
 
-dev = Rget_devices(as_dict=True)['8Q-Agave']
+
 
 
 ROWS, COLS = 2,2
 N = ROWS*COLS
 
 REF_DISTRIBUTION = bs_dist(ROWS, COLS)
-print(REF_DISTRIBUTION)
 
-#plt.bar(range(len(REF_DISTRIBUTION)), REF_DISTRIBUTION)
-#plt.show()
+# Ease
+EASE = 0.0
+REF_DISTRIBUTION += EASE
+REF_DISTRIBUTION /= np.sum(REF_DISTRIBUTION)
+
+#print(REF_DISTRIBUTION)
+
+plt.bar(range(len(REF_DISTRIBUTION)), REF_DISTRIBUTION)
+plt.show()
 #plt.plot(range(len(REF_DISTRIBUTION)), np.cumsum(REF_DISTRIBUTION))
 #plt.show()
 
+BUILDING_BLOCKS = {
+    'I': lambda N, A: [I(i) for i in range(N)],
+    'RX1': lambda N, A: [RX1(i) for i in range(N)],
+    'RXX': lambda N, A: [RXX(next(A), i) for i in range(N)],
+    'RZZ': lambda N, A: [RZZ(next(A), i) for i in range(N)],
+    'A1': lambda N, A: [[RX1(i), RZZ(next(A), i), CZ(i, j), RX3(j)] for i in range(N) for j in range(N) if i<j]
+}
 
-def test1(*A_):
-    
-    A = iter(A_)
+def build_bb(*bb_seq):
+    def fn(*A_):
+        A = iter(A_)
 
-    p = pq.Program(
-        [I(i) for i in range(N)],
-        [RX1(i) for i in range(N)],
-        [RZZ(next(A), i) for i in range(N)],
-        [RX1(i) for i in range(N)],
-        [[RX1(i), CZ(i, j), RZZ(next(A), i), RX3(j)] for i in range(N) for j in range(N) if i<j],
-    )
-    
-    return p
+        return pq.Program(
+            [
+                BUILDING_BLOCKS[bb](N, A)
+                for bb in bb_seq
+            ]
+        )
+    return fn
+
+def count_vars_bb(*bb_seq):
+    A = iter(range(9999))
+    _ = [
+                BUILDING_BLOCKS[bb](N, A)
+                for bb in bb_seq
+            ]
+    return next(A)
+
+SEQ = ['I', 'RX1', 'RZZ', 'RX1', 'RZZ', 'A1']
+test1 = build_bb(*SEQ)
+num_vars = count_vars_bb(*SEQ)
+print('SEQ:', '-'.join(SEQ), ', vars = ', num_vars)
+
 
 task = OptTask(test1, REF_DISTRIBUTION)
-result = differential_evolution(task, [(-1.3, +1.3)]*10, disp=True, maxiter=3, popsize=15, recombination=0.7,
+result = differential_evolution(task, [(-1.3, +1.3)]*num_vars, disp=True, maxiter=3, popsize=15, recombination=0.7,
                                 strategy='best1bin', polish=USE_WAVEFUNCTION)
 
 print(result)
@@ -86,17 +111,17 @@ plt.show()
 H = np.array(task.history)
 Hmin = np.minimum.accumulate(H)
 
-ax = plt.gca()
-ax.scatter(range(len(task.history)), task.history, 2, 'red')
-ax.plot(range(len(task.history)), Hmin, linewidth=1, color='black')
-ax.set_yscale('log')
-plt.show()
+# ax = plt.gca()
+# ax.scatter(range(len(task.history)), task.history, 2, 'red')
+# ax.plot(range(len(task.history)), Hmin, linewidth=1, color='black')
+# ax.set_yscale('log')
+# plt.show()
 
+dev = Rget_devices(as_dict=True)['8Q-Agave']
 comp = CompilerConnection(device=dev)
 cpp = comp.compile(p_best)
 
 qvm = QVMConnection()
 rwf = qvm.wavefunction(p_best)[0]
 rwf.plot()
-display(HTML(format_html(rwf.amplitudes, [], cpp, label=lambda x:''.join(map(str,x)), show_quil=True)))
 

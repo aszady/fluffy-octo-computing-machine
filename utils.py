@@ -245,7 +245,7 @@ def artificial_sample(probs, samples):
 
 
 class OptTask:
-    def __init__(self, p, ref_distribution, metric=kl_div):
+    def __init__(self, p, ref_distribution, metric=cnll):
         self.p = p
         self.ref_distribution = ref_distribution
         self.history = []
@@ -267,7 +267,10 @@ class OptTask:
         # print('{} -> {}'.format(X, div))
         return div
 
+# Standard Rigetti set
 RX1 = lambda x: RX(pi/2, x)
 RX2 = lambda x: RX(pi, x)
 RX3 = lambda x: RX(-pi/2, x)
 RZZ = lambda a, x: RZ(a*pi, x)
+
+RXX = lambda a, x: RX(a*pi, x)
