@@ -274,3 +274,10 @@ RX3 = lambda x: RX(-pi/2, x)
 RZZ = lambda a, x: RZ(a*pi, x)
 
 RXX = lambda a, x: RX(a*pi, x)
+
+def topology(N, name='all'):
+    if name == 'all':
+        return [(i, j) for i in range(N) for j in range(N) if i != j]
+    if name == 'ring':
+        return [(i, (i+1)%N) for i in range(N)] + [(i, (i-1)%N) for i in range(N)]
+    raise NotImplementedError('NIE')
