@@ -11,7 +11,6 @@ import re
 # PyQuil imports
 import pyquil.quil as pq
 from pyquil.quil import Program
-from pyquil.quilbase import DefGate
 from pyquil.gates import *
 
 from referenceqvm.api import QVMConnection
@@ -21,15 +20,22 @@ from pyquil.api import get_devices as Rget_devices, CompilerConnection
 from scipy.optimize import differential_evolution
 
 import matplotlib.pyplot as plt
-import pyemd
 import time
 import os
-
+import argparse
 import itertools
+
 from utils import *
 
+parser = argparse.ArgumentParser()
+parser.add_argument('rows', type=int, default=2)
+parser.add_argument('cols', type=int, default=2)
+parser.add_argument('-k', type=int, default=3)
+args = parser.parse_args()
 
-ROWS, COLS = 2,2
+ROWS, COLS = args.rows, args.cols
+K = args.k
+
 N = ROWS*COLS
 
 REF_DISTRIBUTION = bs_dist(ROWS, COLS)
@@ -52,8 +58,10 @@ BUILDING_BLOCKS = {
     'RX1': lambda N, A: [RX1(i) for i in range(N)],
     'RXX': lambda N, A: [RXX(next(A), i) for i in range(N)],
     'RZZ': lambda N, A: [RZZ(next(A), i) for i in range(N)],
-    'A1': lambda N, A: [[RX1(i), RZZ(next(A), i), CZ(i, j), RX3(j)] for i in range(N) for j in range(N) if i<j],
-    'A2': lambda N, A: [[RX1(i), RZZ(next(A), i), CZ(i, j), RX3(j)] for i in range(N) for j in range(N) if i!=j]
+    #'A1': lambda N, A: [[RX1(i), RZZ(next(A), i), CZ(i, j), RX3(j)] for i in range(N) for j in range(N) if i<j],
+    #'A2': lambda N, A: [[RX1(i), RZZ(next(A), i), CZ(i, j), RX3(j)] for i in range(N) for j in range(N) if i!=j],
+    'A3': lambda N, A: [[RX1(i), RZZ(next(A), j), CZ(i, j), RX3(j)] for i in range(N) for j in range(N) if i!=j],
+    'A4': lambda N, A: [[RZZ(next(A), i), RZZ(next(A), j), RX1(i), CZ(i, j)] for i in range(N) for j in range(N) if i!=j]
 }
 
 def build_bb(*bb_seq):
@@ -76,9 +84,16 @@ def count_vars_bb(*bb_seq):
             ]
     return next(A)
 
-RSEQ = random.choices(population=list(BUILDING_BLOCKS.keys()), k=3)
 
-SEQ = RSEQ#['I', 'RXX', 'RZZ', 'RXX', 'RZZ', 'A1']
+begin_with_rx1 = random.choice([False, True])
+
+SEQ = []
+if begin_with_rx1:
+    SEQ.append('RX1')
+
+RSEQ = random.choices(population=list(BUILDING_BLOCKS.keys()), k=args.k - len(SEQ))
+
+SEQ.extend(RSEQ)
 
 
 PROJECT_NAME = str(ROWS) + '-' + str(COLS) + '/' + '-'.join(SEQ) + '/' + str(int(time.time()))
