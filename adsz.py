@@ -66,6 +66,7 @@ BUILDING_BLOCKS = {
     #'A3': lambda N, A: [[RX1(i), RZZ(next(A), j), CZ(i, j), RX3(j)] for i in range(N) for j in range(N) if i!=j],
     #'A4': lambda N, A: [[RZZ(next(A), i), RZZ(next(A), j), RX1(i), CZ(i, j)] for i in range(N) for j in range(1,N) if i!=j],
     'A4y': lambda N, A: [[RZZ(next(A), i), RZZ(next(A), j), RX1(i), CZ(i, j)] for i in range(1,N) for j in range(1,N) if i!=j],
+    'A5y': lambda N, A: [[RZZ(next(A), i), RX1(i), RZZ(next(A), j), RX1(j), CZ(i, j)] for i in range(1,N) for j in range(1,N) if i!=j],
     #'A4S': lambda N, A: [[RZZ(next(A), i), RZZ(next(A), (i+1)%N), RX1(i), CZ(i, (i+1)%N)] for i in range(N)],
     'SY': lambda N, A: [RX1(0)] + [CNOT(0, i) for i in range(1,N)]
 }
@@ -108,7 +109,7 @@ else:
         RSEQ = random.choices(population=list(
             set(BUILDING_BLOCKS.keys()) - {'SY'}),
             k=args.k - len(SEQ) - 1)
-        if any(RSEQ, is_entangling):
+        if any(map(is_entangling, RSEQ)):
             break
 
     SEQ.extend(RSEQ)
@@ -170,11 +171,12 @@ plt.savefig(os.path.join(dir, 'chart1.png'))
 H = np.array(task.history)
 Hmin = np.minimum.accumulate(H)
 
-ax = plt.gca()
+fig = plt.gcf()
+ax = fig.gca()
 ax.scatter(range(len(task.history)), task.history, 2, 'red')
 ax.plot(range(len(task.history)), Hmin, linewidth=1, color='black')
 ax.set_yscale('log')
-plt.savefig('chart2.png')
+fig.savefig(os.path.join(dir, 'chart2.png'))
 
 # dev = Rget_devices(as_dict=True)['8Q-Agave']
 # comp = CompilerConnection(device=dev)
