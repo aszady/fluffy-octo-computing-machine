@@ -136,7 +136,7 @@ LOG('SEQ:', '-'.join(SEQ), ', vars = ', num_vars, ', num_gates = ', num_gates)
 
 
 task = OptTask(test1, REF_DISTRIBUTION)
-result = differential_evolution(task, [(-1.3, +1.3)]*num_vars, disp=True, maxiter=3, popsize=15, recombination=0.7, strategy='best1bin', polish=USE_WAVEFUNCTION)
+result = differential_evolution(task, [(-1.3, +1.3)]*num_vars, disp=True, maxiter=2, popsize=10, recombination=0.7, strategy='best1bin', polish=USE_WAVEFUNCTION)
 
 LOG(result)
 
@@ -159,7 +159,7 @@ wf = qvm.wavefunction(p_best)[0]
 
 # In[65]:
 
-
+plt.cla()
 probs = np.square(np.abs(wf.amplitudes))
 plt.bar(range(len(REF_DISTRIBUTION)), REF_DISTRIBUTION, width=0.8)
 plt.bar(range(len(REF_DISTRIBUTION)), probs, width=0.6)
@@ -171,6 +171,7 @@ plt.savefig(os.path.join(dir, 'chart1.png'))
 H = np.array(task.history)
 Hmin = np.minimum.accumulate(H)
 
+plt.cla()
 fig = plt.gcf()
 ax = fig.gca()
 ax.scatter(range(len(task.history)), task.history, 2, 'red')
