@@ -1,7 +1,7 @@
 from utils import cnll
 
 from heapq import *
-from math import log, pi, sin, cos
+from math import log, pi, sin, cos, exp
 import random
 
 import copy
@@ -10,7 +10,6 @@ import os
 
 from pyquil.api import QVMConnection
 from pyquil.quil import Program
-from pyquil.gates import *
 
 # private keys
 
@@ -55,10 +54,10 @@ class Node(INode):
         self.cost = cost
 
     def get_qubits(self):
-        return qubits
+        return self.qubits
 
     def get_gate(self):
-        return gate
+        return self.gate
 
     def get_cost(self):
         return cost
@@ -109,6 +108,9 @@ class QuBits:
 
         return result
 
+    def get_qubits(self):
+        return self.data
+
     def get_probabilities(self):
         return np.abs(self.get_amplitudes()) ** 2
 
@@ -127,7 +129,7 @@ class QuBits:
         qubits.data = self.data.copy()
         return qubits
 
-def rz(qubits: QuBits, n, phi):
+def rz(qubits, n, phi):
     qubits = qubits.copy()
     qubit = qubits.get_qubit(n)
 
@@ -182,7 +184,31 @@ def cz(qubits, n_ctrl, n_trgt):
 
     return qubits
     
+def cn(qubits, n_ctrl, n_trgt):
+    qubits = qubits.copy()
 
+    control = qubits.get_qubit(n_ctrl)
+    target = qubits.get_qubit(n_trgt)
+    control_target = np.kron(control, target)
+
+    control_target = np.dot(
+        np.array(
+            [[1, 0, 0, 0],
+             [0, 1, 0, 0],
+             [0, 0, 0, 1],
+             [0, 0, 1, 0]]
+        ),
+        control_target
+    )
+
+    control = control_target[0: 2]
+    target = control_target[2: 4]
+
+    qubits.set_qubit(n_ctrl, control)
+    qubits.set_qubit(n_trgt, target)
+
+    return qubits
+    
 def x(qubits, n):
     qubits = qubits.copy()
     qubit = qubits.get_qubit(n)
@@ -191,6 +217,21 @@ def x(qubits, n):
         np.array(
             [[0, 1],
              [1, 0]]
+        ),
+        qubit
+    )
+
+    qubits.set_qubit(n, qubit)
+    return qubits
+
+def r(qubits, n, phi):
+    qubits = qubits.copy()
+    qubit = qubits.get_qubit(n)
+
+    qubit = np.dot(
+        np.array(
+            [[1, 0],
+             [0, np.exp(1j * phi)]]
         ),
         qubit
     )
@@ -215,6 +256,93 @@ def h(qubits, n):
 
 #
 
+class I:
+    def __init__(self, n):
+        self.n = n
+
+    def run(self, qubits):
+        return qubits.copy()
+
+    def dump(self):
+        return "I {}".format(self.n)
+
+class RZ:
+    def __init__(self, n, phi):
+        self.n = n
+        self.phi = phi
+
+    def run(self, qubits):
+        return rz(qubits, self.n, self.phi)
+
+    def dump(self):
+        return "RZ ({:.2f}) {}".format(self.phi, self.n)
+
+class RX:
+    def __init__(self, n, phi):
+        self.n = n
+        self.phi = phi
+
+    def run(self, qubits):
+        return rx(qubits, self.n, self.phi)
+
+    def dump(self):
+        return "RX ({:.2f}) {}".format(self.phi, self.n)
+
+class CN:
+    def __init__(self, n_ctrl, n_trgt):
+        self.n_ctrl = n_ctrl
+        self.n_trgt = n_trgt
+
+    def run(self, qubits):
+        return cn(qubits, self.n_ctrl, self.n_trgt)
+
+    def dump(self):
+        return "CN({}, {})".format(self.n_ctrl, self.n_trgt)
+
+class CZ:
+    def __init__(self, n_ctrl, n_trgt):
+        self.n_ctrl = n_ctrl
+        self.n_trgt = n_trgt
+
+    def run(self, qubits):
+        return cz(qubits, self.n_ctrl, self.n_trgt)
+
+    def dump(self):
+        return "CZ({}, {})".format(self.n_ctrl, self.n_trgt)
+
+class X:
+    def __init__(self, n):
+        self.n = n
+
+    def run(self, qubits):
+        return x(qubits, self.n)
+
+    def dump(self):
+        return "X {}".format(self.n)
+
+class H:
+    def __init__(self, n):
+        self.n = n
+
+    def run(self, qubits):
+        return h(qubits, self.n)
+
+    def dump(self):
+        return "H {}".format(self.n)
+
+class R:
+    def __init__(self, n, phi):
+        self.n = n
+        self.phi = phi
+
+    def run(self, qubits):
+        return r(qubits, self.n, self.phi)
+
+    def dump(self):
+        return "R {:.2f} {}".format(self.phi, self.n)
+
+#
+
 with open(os.path.expanduser('~/.pyquil_config'), 'w') as f:
     f.write(PYQUIL_CONFIG)
 
@@ -228,99 +356,81 @@ def find_lcz(actual, expected):
     cost = cnll(actual, expected)
 
     heap = make_heap()
-    push_heap(heap, Node(parent=None, qubits=QuBits(4), gate=None, cost=cost), (cost, random.random()))
+    push_heap(heap, Node(parent=None, qubits=QuBits(4), gate=I(0), cost=cost), (cost, random.random()))
 
     operations = []
 
-    def build_lambda_x(i):
-        def fn(qs):
-            return x(qubits, i)
-
-        return fn
 
     for qubit_id in range(0, n_qubits):
-        operations.append(build_lambda_x(qubit_id))
-
-    def build_lambda_h(i):
-        def fn(qs):
-            return h(qubits, i)
-
-        return fn
+        operations.append(X(qubit_id))
 
     for qubit_id in range(0, n_qubits):
-        operations.append(build_lambda_h(qubit_id))
-
-    def build_lambda_cz(i1, i2):
-        def fn(qs):
-            return cz(qubits, i1, i2)
-
-        return fn
+        operations.append(H(qubit_id))
 
     for qubit1_id in range(0, n_qubits):
         for qubit2_id in range(0, n_qubits):
             if qubit1_id == qubit2_id:
                 continue
-            operations.append(build_lambda_cz(qubit1_id, qubit2_id))
 
-    N=0
-
-    def build_lambda_rz(i, a):
-        def fn(qs):
-            return rz(qubits, i, a)
-
-        return fn
+            #operations.append(CZ(qubit1_id, qubit2_id))
+            operations.append(CN(qubit1_id, qubit2_id))
+    
+    for qubit_id in range(0, n_qubits):
+        for angle in [0.927295, -0.927295]:
+            operations.append(R(qubit_id, angle))
 
     #for qubit_id in range(0, n_qubits):
-    #    for angle in [2*pi*i/N for i in range(0, N)]:
-    #        operations.append(build_lambda_rz(qubit_id, angle))
+    #    for angle in [0.927295, -0.927295]:
+    #        operations.append(RZ(qubit_id, angle))
 
-    def build_lambda_rx(i, a):
-        def fn(qs):
-            return rx(qubits, i, a)
-
-        return fn
-
-    for qubit_id in range(0, n_qubits):
-        for angle in [pi*i/N for i in range(0, N)]:
-            operations.append(build_lambda_rx(qubit_id, angle))
+    #for qubit_id in range(0, n_qubits):
+    #    for angle in [0.927295, -0.927295]:
+    #        operations.append(RX(qubit_id, angle))
 
     counter = 0
     min_cost = 9999
     best_solution = None
     visited = set()
 
-    while (counter < 1000000) and (empty_heap(heap) is False):
-        (cost, node) = pop_heap(heap)
-
+    while (counter < 200000) and (empty_heap(heap) is False):
+        ((cost, rnd), node) = pop_heap(heap)
         qubits = node.qubits
 
         for operation in operations:
             counter += 1          
 
-            if counter % 1000 == 0:
-                print(counter, end='\r')  
             
-            new_qubits = operation(qubits)
-            cost = cnll(qubits.get_probabilities(), expected)
+            new_qubits = operation.run(qubits)
             new_cost = cnll(new_qubits.get_probabilities(), expected)
             
-            #print(qubits.get_probabilities())
-            #print(new_qubits.get_probabilities())
-            #print(expected)
-            #print()
-
             if new_qubits in visited:
                 continue
+            else:
+                visited.add(new_qubits)
+
+            #print(qubits.get_probabilities())
+            #print(operation.dump())
+            #print(new_qubits.get_probabilities())
 
             if new_cost < min_cost:
                 min_cost = new_cost
-                best_solution = new_qubits
+                best_solution = node
                 print(cost, " -> ", new_cost)
 
-            visited.add(new_qubits)
-            push_heap(heap, Node(parent=None, qubits=new_qubits, gate=None, cost=cost), (cost, random.random()))
+            #print()
+            push_heap(heap, Node(parent=node, qubits=new_qubits, gate=operation, cost=cost), (cost, random.random()))
 
+    node = best_solution
+    nodes = []
+    
+    while node is not None:
+        nodes.append(node)
+        node = node.get_parent()
 
+    for node in nodes[::-1]:
+        print(node.get_gate().dump())
+
+    print(best_solution.get_qubits().get_probabilities())
 #
 
 actual = np.array([1] + 15 * [0])
@@ -348,7 +458,7 @@ expected = np.array([
 
 def main():
     random.seed(0)
-    print(find_lcz(actual, expected))
+    find_lcz(actual, expected)
 
 main()
 
