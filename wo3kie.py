@@ -36,6 +36,11 @@ class INode:
         self.parent = parent
         self.children = []
 
+        if parent is None:
+            self.depth = 0
+        else:
+            self.depth = parent.get_depth() + 1
+
     def add_child(self, child):
         self.children.append(child)
 
@@ -44,6 +49,9 @@ class INode:
 
     def get_parent(self):
         return self.parent
+
+    def get_depth(self):
+        return self.depth
 
 class Node(INode):
     def __init__(self, parent=None, qubits=None, gate=None, cost=None):
@@ -80,179 +88,24 @@ def empty_heap(heap):
 
 class QuBits:
     def __init__(self, size=1):
-        self.data = np.array(
-            np.concatenate(
-                [(1.0 + 0.0j, 0.0 + 0.0j) for _ in range(0, size)],
-                axis=0
-            )
-        )
+        self.size = size
+        self.data = np.zeros(2 ** size)
+        self.data[0] = 1
 
-    def size(self):
-        return len(self.data) // 2
-
-    def get_qubit(self, n):
-        return [
-            self.data[2 * n],
-            self.data[2 * n + 1]
-        ]
-
-    def set_qubit(self, n, qubit):
-        self.data[2 * n] = qubit[0]
-        self.data[2 * n + 1] = qubit[1]
+    def get_size(self):
+        return self.size
 
     def get_amplitudes(self):
-        result = self.get_qubit(0)
-
-        for i in range(1, self.size()):
-            result = np.kron(result, self.get_qubit(i))
-
-        return result
-
-    def get_qubits(self):
         return self.data
 
     def get_probabilities(self):
         return np.abs(self.get_amplitudes()) ** 2
 
-    def print_qubits(self, text=''):
-        for i in range(self.size()):
-            print(text, self.get_qubit(i))
-
-    def print_amplitudes(self, text=''):
-        print(text, self.get_amplitudes())
-
-    def print_probabilities(self,text=''):
-        print(text, self.get_probabilities())
-
     def copy(self):
         qubits = QuBits()
+        qubits.size = self.size
         qubits.data = self.data.copy()
         return qubits
-
-def rz(qubits, n, phi):
-    qubits = qubits.copy()
-    qubit = qubits.get_qubit(n)
-
-    qubit = np.dot(
-        np.array(
-            [[cos(phi/2) - 1j * sin(phi/2), 0],
-                [0, cos(phi/2) + 1j * sin(phi/2)]]
-        ),
-        qubit
-    )
-
-    qubits.set_qubit(n, qubit)
-    return qubits
-
-def rx(qubits, n, phi):
-    qubits = qubits.copy()
-    qubit = qubits.get_qubit(n)
-
-    qubit = np.dot(
-        np.array(
-            [[cos(phi/2), -1j * sin(phi/2)],
-                [-1j * sin(phi/2), cos(phi/2)]]
-        ),
-        qubit
-    )
-
-    qubits.set_qubit(n, qubit)
-    return qubits
-
-def cz(qubits, n_ctrl, n_trgt):
-    qubits = qubits.copy()
-
-    control = qubits.get_qubit(n_ctrl)
-    target = qubits.get_qubit(n_trgt)
-
-    control_target = np.kron(control, target)
-    control_target = np.dot(
-        np.array(
-            [[1, 0, 0, 0],
-             [0, 1, 0, 0],
-             [0, 0, 1, 0],
-             [0, 0, 0, -1]]
-        ),
-        control_target
-    )
-
-    control = control_target[0: 2]
-    target = control_target[2: 4]
-
-    qubits.set_qubit(n_ctrl, control)
-    qubits.set_qubit(n_trgt, target)
-
-    return qubits
-    
-def cn(qubits, n_ctrl, n_trgt):
-    qubits = qubits.copy()
-
-    control = qubits.get_qubit(n_ctrl)
-    target = qubits.get_qubit(n_trgt)
-    control_target = np.kron(control, target)
-
-    control_target = np.dot(
-        np.array(
-            [[1, 0, 0, 0],
-             [0, 1, 0, 0],
-             [0, 0, 0, 1],
-             [0, 0, 1, 0]]
-        ),
-        control_target
-    )
-
-    control = control_target[0: 2]
-    target = control_target[2: 4]
-
-    qubits.set_qubit(n_ctrl, control)
-    qubits.set_qubit(n_trgt, target)
-
-    return qubits
-    
-def x(qubits, n):
-    qubits = qubits.copy()
-    qubit = qubits.get_qubit(n)
-
-    qubit = np.dot(
-        np.array(
-            [[0, 1],
-             [1, 0]]
-        ),
-        qubit
-    )
-
-    qubits.set_qubit(n, qubit)
-    return qubits
-
-def r(qubits, n, phi):
-    qubits = qubits.copy()
-    qubit = qubits.get_qubit(n)
-
-    qubit = np.dot(
-        np.array(
-            [[1, 0],
-             [0, np.exp(1j * phi)]]
-        ),
-        qubit
-    )
-
-    qubits.set_qubit(n, qubit)
-    return qubits
-
-def h(qubits, n):
-    qubits = qubits.copy()
-    qubit = qubits.get_qubit(n)
-
-    qubit = np.dot(
-        0.5 * np.sqrt(2) * np.array(
-            [[1, 1],
-             [1, -1]]
-        ),
-        qubit
-    )
-
-    qubits.set_qubit(n, qubit)
-    return qubits
 
 #
 
@@ -261,7 +114,9 @@ class I:
         self.n = n
 
     def run(self, qubits):
-        return qubits.copy()
+        qubits = qubits.copy()
+
+        return qubits
 
     def dump(self):
         return "I {}".format(self.n)
@@ -272,7 +127,28 @@ class RZ:
         self.phi = phi
 
     def run(self, qubits):
-        return rz(qubits, self.n, self.phi)
+        rz = np.array(
+            [[cos(self.phi / 2) - 1j * sin(self.phi / 2), 0],
+            [0, cos(self.phi / 2) + 1j * sin(self.phi / 2)]]
+        )
+
+        i = np.eye(2)
+
+        if self.n == 0:
+            gate = rz
+        else:
+            gate = i
+
+        for n in range(1, qubits.get_size()):
+            if n == self.n:
+                gate = np.kron(gate, rz)
+            else:
+                gate = np.kron(gate, i)
+
+        result = QuBits(qubits.get_size())
+        result.data = np.dot(gate, qubits.data)
+
+        return result
 
     def dump(self):
         return "RZ ({:.2f}) {}".format(self.phi, self.n)
@@ -283,39 +159,209 @@ class RX:
         self.phi = phi
 
     def run(self, qubits):
-        return rx(qubits, self.n, self.phi)
+        rx = np.array(
+            [[cos(self.phi / 2), -1j * sin(self.phi / 2)],
+            [-1j * sin(self.phi / 2), cos(self.phi / 2)]]
+        )
+
+        i = np.eye(2)
+
+        if self.n == 0:
+            gate = rx
+        else:
+            gate = i
+
+        for n in range(1, qubits.get_size()):
+            if n == self.n:
+                gate = np.kron(gate, rx)
+            else:
+                gate = np.kron(gate, i)
+
+        result = QuBits(qubits.get_size())
+        result.data = np.dot(gate, qubits.data)
+
+        return result
 
     def dump(self):
         return "RX ({:.2f}) {}".format(self.phi, self.n)
 
 class CN:
-    def __init__(self, n_ctrl, n_trgt):
-        self.n_ctrl = n_ctrl
-        self.n_trgt = n_trgt
+    def __init__(self, n):
+        self.n = n
 
     def run(self, qubits):
-        return cn(qubits, self.n_ctrl, self.n_trgt)
+        cn = np.array(
+            [[1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 0, 1],
+            [0, 0, 1, 0]]
+        )
+
+        n = 0
+        i = np.eye(2)
+
+        if self.n == 0:
+            gate = cn
+            n += 1
+        else:
+            gate = i
+
+        n += 1
+
+        while n < qubits.get_size():
+            if n == self.n:
+                gate = np.kron(gate, cn)
+                n += 1
+            else:
+                gate = np.kron(gate, i)
+
+            n += 1
+
+        result = QuBits(qubits.get_size())
+        result.data = np.dot(gate, qubits.data)
+        return result
 
     def dump(self):
-        return "CN({}, {})".format(self.n_ctrl, self.n_trgt)
+        return "CN {} {}".format(self.n, self.n + 1)
 
-class CZ:
-    def __init__(self, n_ctrl, n_trgt):
-        self.n_ctrl = n_ctrl
-        self.n_trgt = n_trgt
+class Swap:
+    def __init__(self, n):
+        self.n = n
 
     def run(self, qubits):
-        return cz(qubits, self.n_ctrl, self.n_trgt)
+        swap = np.array(
+            [[1, 0, 0, 0],
+            [0, 0, 1, 0],
+            [0, 1, 0, 0],
+            [0, 0, 0, 1]]
+        )
+
+        n = 0
+        i = np.eye(2)
+
+        if self.n == 0:
+            gate = swap
+            n += 1
+        else:
+            gate = i
+
+        n += 1
+
+        while n < qubits.get_size():
+            if n == self.n:
+                gate = np.kron(gate, swap)
+                n += 1
+            else:
+                gate = np.kron(gate, i)
+
+            n += 1
+
+        result = QuBits(qubits.get_size())
+        result.data = np.dot(gate, qubits.data)
+        return result
 
     def dump(self):
-        return "CZ({}, {})".format(self.n_ctrl, self.n_trgt)
+        return "SWAP {} {}".format(self.n, self.n + 1)
+
+
+class ICN:
+    def __init__(self, n):
+        self.n = n
+
+    def run(self, qubits):
+        icn = np.array(
+            [[0, 1, 0, 0],
+            [1, 0, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]]
+        )
+
+        n = 0
+        i = np.eye(2)
+
+        if self.n == 0:
+            gate = icn
+            n += 1
+        else:
+            gate = i
+
+        n += 1
+
+        while n < qubits.get_size():
+            if n == self.n:
+                gate = np.kron(gate, icn)
+                n += 1
+            else:
+                gate = np.kron(gate, i)
+
+            n += 1
+
+        result = QuBits(qubits.get_size())
+        result.data = np.dot(gate, qubits.data)
+        return result
+
+    def dump(self):
+        return "CN {} {}".format(self.n + 1, self.n)
+
+class R:
+    def __init__(self, n, phi):
+        self.n = n
+        self.phi = phi
+
+    def run(self, qubits):
+        r = np.array(
+            [[1, 0],
+            [0, np.exp(1j * self.phi)]]
+        )
+
+        i = np.eye(2)
+
+        if self.n == 0:
+            gate = r
+        else:
+            gate = i
+
+        for n in range(1, qubits.get_size()):
+            if n == self.n:
+                gate = np.kron(gate, r)
+            else:
+                gate = np.kron(gate, i)
+
+        result = QuBits(qubits.get_size())
+        result.data = np.dot(gate, qubits.data)
+
+        return result
+
+    def dump(self):
+        return "R {}".format(self.n)
 
 class X:
     def __init__(self, n):
         self.n = n
 
     def run(self, qubits):
-        return x(qubits, self.n)
+        x = np.array(
+            [[0, 1],
+            [1, 0]]
+        )
+
+        i = np.eye(2)
+
+        if self.n == 0:
+            gate = x
+        else:
+            gate = i
+
+        for n in range(1, qubits.get_size()):
+            if n == self.n:
+                gate = np.kron(gate, x)
+            else:
+                gate = np.kron(gate, i)
+
+        result = QuBits(qubits.get_size())
+        result.data = np.dot(gate, qubits.data)
+
+        return result
 
     def dump(self):
         return "X {}".format(self.n)
@@ -325,21 +371,31 @@ class H:
         self.n = n
 
     def run(self, qubits):
-        return h(qubits, self.n)
+        h = np.array(
+            [[0, 1],
+            [1, 0]]
+        )
+
+        i = np.eye(2)
+
+        if self.n == 0:
+            gate = h
+        else:
+            gate = i
+
+        for n in range(1, qubits.get_size()):
+            if n == self.n:
+                gate = np.kron(gate, h)
+            else:
+                gate = np.kron(gate, i)
+
+        result = QuBits(qubits.get_size())
+        result.data = np.dot(gate, qubits.data)
+
+        return result
 
     def dump(self):
         return "H {}".format(self.n)
-
-class R:
-    def __init__(self, n, phi):
-        self.n = n
-        self.phi = phi
-
-    def run(self, qubits):
-        return r(qubits, self.n, self.phi)
-
-    def dump(self):
-        return "R {:.2f} {}".format(self.phi, self.n)
 
 #
 
@@ -360,57 +416,60 @@ def find_lcz(actual, expected):
 
     operations = []
 
-
-    for qubit_id in range(0, n_qubits):
-        operations.append(X(qubit_id))
+    #for qubit_id in range(0, n_qubits):
+    #    operations.append(X(qubit_id))
 
     for qubit_id in range(0, n_qubits):
         operations.append(H(qubit_id))
 
-    for qubit1_id in range(0, n_qubits):
-        for qubit2_id in range(0, n_qubits):
-            if qubit1_id == qubit2_id:
-                continue
+    for qubit_id in range(0, n_qubits - 1):
+        operations.append(CN(qubit_id))
 
-            #operations.append(CZ(qubit1_id, qubit2_id))
-            operations.append(CN(qubit1_id, qubit2_id))
-    
+    #for qubit_id in range(0, n_qubits - 1):
+    #    operations.append(Swap(qubit_id))
+
     for qubit_id in range(0, n_qubits):
-        for angle in [0.927295, -0.927295]:
-            operations.append(R(qubit_id, angle))
-
-    #for qubit_id in range(0, n_qubits):
-    #    for angle in [0.927295, -0.927295]:
-    #        operations.append(RZ(qubit_id, angle))
-
-    #for qubit_id in range(0, n_qubits):
-    #    for angle in [0.927295, -0.927295]:
-    #        operations.append(RX(qubit_id, angle))
+        for angle in [0.927295]:
+            operations.append(RZ(qubit_id, angle))
+            operations.append(RX(qubit_id, angle))
+            #operations.append(R(qubit_id, angle))
 
     counter = 0
     min_cost = 9999
     best_solution = None
     visited = set()
 
-    while (counter < 200000) and (empty_heap(heap) is False):
+    while (counter < 500000) and (empty_heap(heap) is False):
         ((cost, rnd), node) = pop_heap(heap)
         qubits = node.qubits
 
         for operation in operations:
-            counter += 1          
+            #if node.get_depth() >= 120:
+            #    continue
 
+            counter += 1    
             
+            if counter % 1000 == 0:
+                print(counter, end='\r')      
+
             new_qubits = operation.run(qubits)
-            new_cost = cnll(new_qubits.get_probabilities(), expected)
             
             if new_qubits in visited:
                 continue
             else:
                 visited.add(new_qubits)
+            
+            new_cost = cnll(new_qubits.get_probabilities(), expected)
 
             #print(qubits.get_probabilities())
             #print(operation.dump())
             #print(new_qubits.get_probabilities())
+
+            if new_cost < 0:
+                continue
+
+            if (new_cost > 1.2 * cost):
+                continue
 
             if new_cost < min_cost:
                 min_cost = new_cost
@@ -462,3 +521,8 @@ def main():
 
 main()
 
+qubits = QuBits(3)
+print(qubits.get_amplitudes())
+
+qubits = CN(1).run(qubits)
+print(qubits.get_amplitudes())

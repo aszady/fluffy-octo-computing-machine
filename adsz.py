@@ -32,12 +32,13 @@ parser.add_argument('rows', type=int, default=2)
 parser.add_argument('cols', type=int, default=2)
 parser.add_argument('-k', type=int, default=3)
 parser.add_argument('-seq', type=str)
+parser.add_argument('-t', type=str, default='all')
 args = parser.parse_args()
 
 ROWS, COLS = args.rows, args.cols
 K = args.k
-
 N = ROWS*COLS
+TOPO = topology(N, args.t)
 
 REF_DISTRIBUTION = bs_dist(ROWS, COLS)
 
@@ -65,8 +66,9 @@ BUILDING_BLOCKS = {
     #'A2': lambda N, A: [[RX1(i), RZZ(next(A), i), CZ(i, j), RX3(j)] for i in range(N) for j in range(N) if i!=j],
     #'A3': lambda N, A: [[RX1(i), RZZ(next(A), j), CZ(i, j), RX3(j)] for i in range(N) for j in range(N) if i!=j],
     #'A4': lambda N, A: [[RZZ(next(A), i), RZZ(next(A), j), RX1(i), CZ(i, j)] for i in range(N) for j in range(1,N) if i!=j],
-    'A4y': lambda N, A: [[RZZ(next(A), i), RZZ(next(A), j), RX1(i), CZ(i, j)] for i in range(1,N) for j in range(1,N) if i!=j],
-    'A5y': lambda N, A: [[RZZ(next(A), i), RX1(i), RZZ(next(A), j), RX1(j), CZ(i, j)] for i in range(1,N) for j in range(1,N) if i!=j],
+    'A4y': lambda N, A: [[RZZ(next(A), i), RZZ(next(A), j), RX1(i), CZ(i, j)]
+                         for i in range(1,N) for j in range(1,N) if (i,j) in TOPO],
+    'A5y': lambda N, A: [[RZZ(next(A), i), RX1(i), RZZ(next(A), j), RX1(j), CZ(i, j)] for i in range(1,N) for j in range(1,N) if (i,j) in TOPO],
     #'A4S': lambda N, A: [[RZZ(next(A), i), RZZ(next(A), (i+1)%N), RX1(i), CZ(i, (i+1)%N)] for i in range(N)],
     'SY': lambda N, A: [RX1(0)] + [CNOT(0, i) for i in range(1,N)]
 }
@@ -116,7 +118,7 @@ else:
     SEQ.append('SY')
 
 
-PROJECT_NAME = str(ROWS) + '-' + str(COLS) + '/' + '-'.join(SEQ) + '/' + str(int(time.time()))
+PROJECT_NAME = str(args.t.lower()) + '-' + str(ROWS) + '-' + str(COLS) + '/' + '-'.join(SEQ) + '/' + str(int(time.time()))
 dir = os.path.join(os.path.dirname(__file__), 'adsz_runs', PROJECT_NAME)
 os.makedirs(dir, exist_ok=True)
 logfile = open(os.path.join(dir, 'log.txt'), 'at')
@@ -136,7 +138,9 @@ LOG('SEQ:', '-'.join(SEQ), ', vars = ', num_vars, ', num_gates = ', num_gates)
 
 
 task = OptTask(test1, REF_DISTRIBUTION)
-result = differential_evolution(task, [(-1.3, +1.3)]*num_vars, disp=True, maxiter=2, popsize=10, recombination=0.7, strategy='best1bin', polish=USE_WAVEFUNCTION)
+result = differential_evolution(task, [(-1.3, +1.3)]*num_vars, init='random',
+    disp=True, maxiter=2, popsize=10, recombination=0.7,
+    strategy='best1bin', polish=USE_WAVEFUNCTION)
 
 LOG(result)
 
@@ -151,6 +155,10 @@ LOG('CNLL', cnll_score)
 LOG('EMD', emd(di, REF_DISTRIBUTION))
 
 LOG(p_best)
+
+LOG('\n')
+LOG('Compiled:')
+LOG(postoptimize(p_best))
 
 qvm = QVMConnection()
 wf = qvm.wavefunction(p_best)[0]
