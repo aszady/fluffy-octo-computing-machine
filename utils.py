@@ -289,7 +289,7 @@ def postoptimize(prog):
     comp = CompilerConnection(device=dev)
     pp1 = comp.compile(prog)
 
-    for i in range(10):
+    for i in range(0):
 
         change = False
 
@@ -298,10 +298,10 @@ def postoptimize(prog):
             if type(inst) is Gate:
                 if inst.name == 'RZ':
                     angle = inst.params[0] % 2*pi
-                    #print('RZ angle: ', angle, angle % pi)
+                    print('RZ angle: ', angle, angle % 2*pi)
                     if min(angle, 2*pi-angle) < 1e-3:
                         change = True
-                        #print('Removing.')
+                        print('Removing.')
                         continue
 
 
