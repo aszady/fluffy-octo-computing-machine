@@ -297,15 +297,15 @@ def postoptimize(prog):
         for inst in pp1.instructions:
             if type(inst) is Gate:
                 if inst.name == 'RZ':
-                    angle = inst.params[0] % pi
+                    angle = inst.params[0] % 2*pi
                     #print('RZ angle: ', angle, angle % pi)
-                    if min(angle, pi-angle) < 1e-3:
+                    if min(angle, 2*pi-angle) < 1e-3:
                         change = True
                         #print('Removing.')
                         continue
 
 
-                ne_inst.append(inst)
+            ne_inst.append(inst)
 
         if not change:
             break
