@@ -70,6 +70,10 @@ BUILDING_BLOCKS = {
                          for i in range(1,N) for j in range(1,N) if (i,j) in TOPO],
     'A5y': lambda N, A: [[RZZ(next(A), i), RX1(i), RZZ(next(A), j), RX1(j), CZ(i, j)] for i in range(1,N) for j in range(1,N) if (i,j) in TOPO],
     #'A4S': lambda N, A: [[RZZ(next(A), i), RZZ(next(A), (i+1)%N), RX1(i), CZ(i, (i+1)%N)] for i in range(N)],
+    'A6y': lambda N, A: [[RZZ(next(A), j), RX1(i), CZ(i, j)]
+                         for i in range(1,N) for j in range(1,N) if (i,j) in TOPO], #A4y, without RZZ,
+    'A7y': lambda N, A: [[RZZ(next(A), i), RZZ(next(A), j), RX3(i), CZ(i, j)]
+                         for i in range(1,N) for j in range(1,N) if (i,j) in TOPO], #A4y, with RX3 inst. RX1
     'SY': lambda N, A: [RX1(0)] + [CNOT(0, i) for i in range(1,N)]
 }
 
