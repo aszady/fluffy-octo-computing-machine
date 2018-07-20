@@ -18,6 +18,7 @@ for rc, data_for_rc in DATA.items():
 
     ITEMS = list(data_for_rc.items())
     ITEMS = sorted(ITEMS, key=lambda kv: min(kv[1]))
-    for seq, items in ITEMS:
-        print(seq)
-        print(items)
+    for seq, items in ITEMS[:9]:
+        print('{:20s}'.format(seq), list(map(lambda z: float('{:.4f}'.format(z)), items)))
+
+    print()
