@@ -63,6 +63,7 @@ def BRZZ(N): return lambda A: [RZZ(next(A), i) for i in range(N)]
 def BCZ(i, j): return lambda A: CZ(i, j)
 
 def BA5(i, j): return lambda A: [RZZ(next(A), i), RZZ(next(A), j), RX1(i), RX1(j), CZ(i, j)]
+def BA6(i, j): return lambda A: [RZZ(next(A), j), RX1(i), CZ(i, j)]
 
 BUILDING_BLOCKS = dict(\
     [('RX1', BRX1(N))] +\
@@ -72,6 +73,8 @@ BUILDING_BLOCKS = dict(\
     [('CZ.{}.{}'.format(i, j), BCZ(i, j))
       for i in range(N) for j in range(N) if (i,j) in TOPO] +\
     [('A5.{}.{}'.format(i, j), BA5(i, j))
+      for i in range(N) for j in range(N) if (i, j) in TOPO]+\
+    [('A6.{}.{}'.format(i, j), BA6(i, j))
       for i in range(N) for j in range(N) if (i, j) in TOPO]
     )
 
